@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE excelMappers SYSTEM "\excelMapper.dtd">
+<excelMappers>
+	<!--内部默认的一些配置，读取这些配置并保存-->
+	<!--
+		还是直接通过构造方法（或 get 方法）来获取默认配置
+		构造方法：不可取，每次都 new
+		get 方法：只会创建一次
+		TODO 使用 默认配置 还是 默认 get 方法？
+		默认配置：解析为 Vo 对象，再转换为 poi 的对象
+		get：获取 Vo 对象，在转换为 poi 对象
+		配置比 get 方法多了个解析过程，还是使用 get 方法较好
+	-->
+
+	<!-- 默认表头样式 -->
+	<style id="defaultHeaderStyle">
+		<property name="font" ref="defaultBoldFont"/>
+		<property name="wrapText" value="true"/>
+		<property name="alignment" value="center"/>
+		<property name="verticalAlignment" value="center"/>
+	</style>
+
+	<!-- 默认样式 -->
+	<style id="defaultCellStyle">
+		<property name="font" ref="defaultFont"/>
+		<property name="wrapText" value="false"/>
+		<property name="alignment" value="center"/>
+		<property name="verticalAlignment" value="center"/>
+	</style>
+
+	<!-- 默认字体 -->
+	<font id="defaultFont">
+		<property name="fontName" value="微软雅黑"/>
+		<property name="bold" value="false"/>
+		<property name="fontHeightInPoints" value="10"/>
+	</font>
+
+	<!-- 默认加粗字体 -->
+	<font id="defaultBoldFont">
+		<property name="fontName" value="微软雅黑"/>
+		<property name="bold" value="true"/>
+		<property name="fontHeightInPoints" value="12"/>
+	</font>
+</excelMappers>
