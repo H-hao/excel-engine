@@ -1,11 +1,11 @@
-#Excel 导入导出
-##功能
-###可配置项
-####EngineConfiguration 配置
+# Excel 导入导出
+## 功能
+### 可配置项
+#### EngineConfiguration 配置
 1. 通用
     - globalRollbackThreshold：全局失败回滚的阈值，如果失败条数大于指定的数字，则回滚所有数据，否则提交成功的数据；也可以在 excelImport 中进行配置
 1. Spring
-####xml 配置
+#### xml 配置
 1. `excelExport`
     - 属性：`id`，`fileName`，`exportType`，`freezeTop`，`styleRef`，`headerStyleRef`，`maxColumnWidth`，`maxRowHeight`...
         - styleRef：
@@ -53,7 +53,7 @@
             - `fontName`
             - `bold`
             - `fontHeightInPoints`
-##进度
+## 进度
 1. xml
     - app.xml 
         - globalMaxColumnWidth：赋值到 excelOfExportVo 对象的 maxColumnWidth 属性上，目前没有使用 global，直接使用的 excelOfExportVo 对象上的 maxColumnWidth 的默认值
@@ -98,7 +98,7 @@
     - web导入：0%，不需要？直接转换为流后使用普通导入？
     - web导出：80%，与普通导入进度相同，因为 请求响应的处理都已处理；
     
-##日志记录
+## 日志记录
 >2017-07-10
 >> - 添加：模版导出方式
 >
