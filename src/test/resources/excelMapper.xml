@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="utf-8" ?>
+<!--<!DOCTYPE excelMappers PUBLIC
+        "excel-engine"
+        "https://github.com/H-hao/excel-engine/blob/master/src/main/java/com/hh/excel/engine/config/excelMapper.dtd">-->
+<!DOCTYPE excelMappers SYSTEM "com/hh/excel/engine/config/excelMapper.dtd">
 <excelMappers>
-
-
-
-
-
+    <!--导出excel，测试-->
+    <excelExport id="exportTest" exportType="xlsx" fileName="新生数据表">
+        <map>
+            <entry header="姓名" getter="name" />
+            <entry header="年龄" getter="age" />
+            <entry header="性别" getter="gender" />
+        </map>
+    </excelExport>
 </excelMappers>
