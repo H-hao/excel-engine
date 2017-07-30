@@ -8,6 +8,7 @@ import javax.sql.DataSource;
 
 /**
  * ExcelEngine 对应的配置对象
+ * TODO 添加一个 builder 类，用于没有集成spring的时候，进行 configuration 的配置
  * Created by huanghao on 2017/6/29.
  */
 public class EngineConfiguration {
