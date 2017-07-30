@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- 可以配置一些全局函数（放在根节点下） -->
+<!ELEMENT excelMappers (font* | style* | headerOfPage* | footerOfPage* | excelMap* | excelImport* | excelExport* )+>
+
+<!ELEMENT excelExport (header | datas | map | propertiesForTemplate)>
+<!ATTLIST excelExport
+	id ID #REQUIRED
+	excelMapRef CDATA #IMPLIED
+	templateLocation CDATA #IMPLIED
+	fileName CDATA #IMPLIED
+	exportType CDATA #IMPLIED
+	title CDATA #IMPLIED
+	freezeTop CDATA #IMPLIED
+	freezeLeft CDATA #IMPLIED
+	startRowNo CDATA #IMPLIED
+	startCellNo CDATA #IMPLIED
+	styleRef CDATA #IMPLIED
+	headerStyleRef CDATA #IMPLIED
+	maxColumnWidth CDATA #IMPLIED
+	maxRowHeight CDATA #IMPLIED
+	headerOfPageRef CDATA #IMPLIED
+	footerOfPageRef CDATA #IMPLIED
+	isIndexWay CDATA #IMPLIED
+	startIndexForTemplate CDATA #IMPLIED
+	isConsecutive CDATA #IMPLIED
+	ignoreColumnIndex CDATA #IMPLIED
+	rowFailThreshold CDATA #IMPLIED
+	columnFailThreshold CDATA #IMPLIED
+>
+
+<!ELEMENT excelImport (map | propertiesForTemplate)>
+<!ATTLIST excelImport
+	id ID #REQUIRED
+	type CDATA #IMPLIED
+	excelMapRef CDATA #IMPLIED
+	templateLocation CDATA #IMPLIED
+	startRowNo CDATA #IMPLIED
+	startCellNo CDATA #IMPLIED
+	isIndexWay CDATA #IMPLIED
+	startIndexForTemplate CDATA #IMPLIED
+	isConsecutive CDATA #IMPLIED
+	ignoreColumnIndex CDATA #IMPLIED
+	rowFailThreshold CDATA #IMPLIED
+	columnFailThreshold CDATA #IMPLIED
+>
+
+<!ELEMENT excelMap (mapping*)>
+<!ATTLIST excelMap
+	id ID #REQUIRED
+	type CDATA #REQUIRED
+>
+
+<!ELEMENT mapping EMPTY>
+<!ATTLIST mapping
+	property CDATA #REQUIRED
+	effectiveHeader CDATA #REQUIRED
+	<!-- 有效的索引，与 header 同样的作用 -->
+	effectiveIndex CDATA #IMPLIED
+>
+
+<!ELEMENT headerOfPage (property*)>
+<!ATTLIST headerOfPage
+	id ID #REQUIRED
+>
+<!ELEMENT footerOfPage (property*)>
+<!ATTLIST footerOfPage
+	id ID #REQUIRED
+>
+
+<!ELEMENT font (property*)>
+<!ATTLIST font
+	id ID #REQUIRED
+	extend CDATA #IMPLIED
+>
+
+<!ELEMENT style (property*)>
+<!ATTLIST style
+	id ID #REQUIRED
+	extend CDATA #IMPLIED
+>
+
+<!ELEMENT header (list? | value?)*>
+<!ATTLIST header
+	styleRef CDATA #IMPLIED
+>
+
+<!ELEMENT datas (list? | value?)*>
+<!ATTLIST datas
+	styleref CDATA #IMPLIED
+>
+
+<!ELEMENT list (value*)>
+<!ATTLIST list
+>
+
+<!ELEMENT map (entry*)>
+<!ATTLIST map
+>
+
+<!ELEMENT entry (#PCDATA | setter | getter)*>
+<!ATTLIST entry
+	required CDATA #IMPLIED
+	header CDATA #IMPLIED
+	columnIndex CDATA #IMPLIED
+	getter CDATA #IMPLIED
+	setter CDATA #IMPLIED
+	copyTo CDATA #IMPLIED
+	cellType CDATA #IMPLIED
+	width CDATA #IMPLIED
+	maxWidth CDATA #IMPLIED
+	blank CDATA #IMPLIED
+	pattern CDATA #IMPLIED
+	dataFormat CDATA #IMPLIED
+	dataSource CDATA #IMPLIED
+	selectSql CDATA #IMPLIED
+>
+
+<!ELEMENT propertiesForTemplate (entry) >
+<!ATTLIST propertiesForTemplate
+
+>
+<!ELEMENT setter (#PCDATA | if)*>
+<!ATTLIST setter
+>
+
+<!ELEMENT getter (#PCDATA | if)*>
+<!ATTLIST getter
+>
+
+<!ELEMENT value (#PCDATA | if)*>
+<!ATTLIST value
+>
+
+<!ELEMENT if (#PCDATA)>
+<!ATTLIST if
+	test CDATA #REQUIRED
+>
+<!ELEMENT property (#PCDATA)>
+<!ATTLIST property
+	name CDATA #REQUIRED
+	value CDATA #IMPLIED
+	ref CDATA #IMPLIED
+>
+
