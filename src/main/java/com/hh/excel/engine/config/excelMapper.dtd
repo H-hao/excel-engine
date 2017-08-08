@@ -1,15 +1,33 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!-- 可以配置一些全局函数（放在根节点下） -->
 <!ELEMENT excelMappers (font* | style* | headerOfPage* | footerOfPage* | excelMap* | excelImport* | excelExport* )+>
-
-<!ELEMENT excelExport (header | datas | map | propertiesForTemplate)>
+<!--这里的次数约束表述不对，dtd 对此的支持不太好-->
+<!ELEMENT excelExport (sheetForExport*)>
 <!ATTLIST excelExport
 	id ID #REQUIRED
-	excelMapRef CDATA #IMPLIED
 	templateLocation CDATA #IMPLIED
 	fileName CDATA #IMPLIED
 	exportType CDATA #IMPLIED
-	title CDATA #IMPLIED
+	globalStyleRef CDATA #IMPLIED
+	globalHeaderStyleRef CDATA #IMPLIED
+	rowFailThreshold CDATA #IMPLIED
+	columnFailThreshold CDATA #IMPLIED
+	isIndexWay CDATA #IMPLIED
+	<!--title CDATA #IMPLIED-->
+>
+
+<!ELEMENT excelImport (sheetForImport*)>
+<!ATTLIST excelImport
+	id ID #REQUIRED
+	rowFailThreshold CDATA #IMPLIED
+	columnFailThreshold CDATA #IMPLIED
+	isIndexWay CDATA #IMPLIED
+>
+
+<!ELEMENT sheetForExport (header | datas | map | propertiesForTemplate)>
+<!ATTLIST sheetForExport
+	name CDATA #REQUIRED
+	excelMapRef CDATA #IMPLIED
 	freezeTop CDATA #IMPLIED
 	freezeLeft CDATA #IMPLIED
 	startRowNo CDATA #IMPLIED
@@ -20,28 +38,22 @@
 	maxRowHeight CDATA #IMPLIED
 	headerOfPageRef CDATA #IMPLIED
 	footerOfPageRef CDATA #IMPLIED
-	isIndexWay CDATA #IMPLIED
 	startIndexForTemplate CDATA #IMPLIED
 	isConsecutive CDATA #IMPLIED
 	ignoreColumnIndex CDATA #IMPLIED
-	rowFailThreshold CDATA #IMPLIED
-	columnFailThreshold CDATA #IMPLIED
 >
-
-<!ELEMENT excelImport (map | propertiesForTemplate)>
-<!ATTLIST excelImport
-	id ID #REQUIRED
+<!ELEMENT sheetForImport (header | datas | map | propertiesForTemplate)>
+<!ATTLIST sheetForImport
+	name CDATA #IMPLIED
 	type CDATA #IMPLIED
 	excelMapRef CDATA #IMPLIED
 	templateLocation CDATA #IMPLIED
 	startRowNo CDATA #IMPLIED
 	startCellNo CDATA #IMPLIED
-	isIndexWay CDATA #IMPLIED
 	startIndexForTemplate CDATA #IMPLIED
 	isConsecutive CDATA #IMPLIED
 	ignoreColumnIndex CDATA #IMPLIED
-	rowFailThreshold CDATA #IMPLIED
-	columnFailThreshold CDATA #IMPLIED
+	<!--name CDATA #REQUIRED-->
 >
 
 <!ELEMENT excelMap (mapping*)>
@@ -102,6 +114,7 @@
 	required CDATA #IMPLIED
 	header CDATA #IMPLIED
 	columnIndex CDATA #IMPLIED
+	value CDATA #IMPLIED
 	getter CDATA #IMPLIED
 	setter CDATA #IMPLIED
 	copyTo CDATA #IMPLIED

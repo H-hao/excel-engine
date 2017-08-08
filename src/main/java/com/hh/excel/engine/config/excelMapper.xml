@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE excelMappers SYSTEM "\excelMapper.dtd">
+<!DOCTYPE excelMappers SYSTEM "/com/hh/excel/engine/config/excelMapper.dtd">
 <excelMappers>
 	<!--内部默认的一些配置，读取这些配置并保存-->
 	<!--
