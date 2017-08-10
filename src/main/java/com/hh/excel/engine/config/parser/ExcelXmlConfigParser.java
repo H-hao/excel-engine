@@ -1,7 +1,7 @@
 package com.hh.excel.engine.config.parser;
 
-import com.sun.org.apache.xerces.internal.impl.Constants;
 import com.hh.excel.engine.common.CommonUtil;
+import com.hh.excel.engine.common.Constants;
 import com.hh.excel.engine.common.CoreUtil;
 import com.hh.excel.engine.config.vo.*;
 import ognl.Node;
@@ -29,6 +29,7 @@ import java.util.*;
 public class ExcelXmlConfigParser extends ExcelConfigParser {
     private static final Logger LOGGER = LoggerFactory.getLogger(ExcelXmlConfigParser.class);
     private static final String SUFFIX = ".xml";
+    public static final String ELEMENT_SHEET = "sheet";
     private Element root = null;
 
     // 取消默认xml配置，没有手动配置就不读取任何文件
@@ -57,7 +58,7 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
         for (InputStream inputStream : inputStreams) {
             try {
                 SAXReader saxReader = new SAXReader();
-                saxReader.setFeature(Constants.XERCES_FEATURE_PREFIX + Constants.LOAD_EXTERNAL_DTD_FEATURE, false);// 忽略 dtd
+                saxReader.setFeature(com.sun.org.apache.xerces.internal.impl.Constants.XERCES_FEATURE_PREFIX + com.sun.org.apache.xerces.internal.impl.Constants.LOAD_EXTERNAL_DTD_FEATURE, false);// 忽略 dtd
                 Document document = saxReader.read(inputStream);// 这里会自己关闭流
                 root = document.getRootElement();
                 // 读取xml配置 List elements = root.elements();
@@ -91,7 +92,7 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
      * @date 2017年4月7日下午3:03:00
      */
     private void readFont() {
-        List fontElements = root.elements(ELEMENT_FONT);
+        List fontElements = root.elements(Constants.ELEMENT_FONT);
         for (Object obj : fontElements) {
             Element element = (Element) obj;
             AbstractBaseConfig baseConfig = new FontVo();
@@ -105,7 +106,7 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
      * @date 2017年4月7日下午3:03:12
      */
     private void readCellStyle() {
-        List cellStyleElements = root.elements(ELEMENT_STYLE);
+        List cellStyleElements = root.elements(Constants.ELEMENT_STYLE);
         for (Object obj : cellStyleElements) {
             Element element = (Element) obj;
             AbstractBaseConfig baseConfig = new CellStyleVo();
@@ -119,7 +120,7 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
      * @date 2017年4月7日下午3:03:22
      */
     private void readExcelMap() {
-        List excelMapElements = root.elements(ELEMENT_EXCEL_MAP);
+        List excelMapElements = root.elements(Constants.ELEMENT_EXCEL_MAP);
         for (Object obj : excelMapElements) {
             Element element = (Element) obj;
             AbstractBaseConfig baseConfig = new ExcelMap();
@@ -133,11 +134,23 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
      * @date 2017年4月7日下午3:03:32
      */
     private void readExcelImport() {
-        List excelImportElements = root.elements(ELEMENT_EXCEL_IMPORT);
+        List excelImportElements = root.elements(Constants.ELEMENT_EXCEL_IMPORT);
         for (Object obj : excelImportElements) {
-            Element element = (Element) obj;
-            AbstractBaseConfig baseConfig = new ExcelOfImportVo();
-            setComplexProperty(element, baseConfig);
+            Element element = (Element) obj;// sheet
+            ExcelVo baseConfig = new ExcelOfImportVo();
+            // read attr of excelImport node
+            readAttr2Obj(element, baseConfig);
+            // 读取 sheet 节点
+            List sheetElements = element.elements(Constants.ELEMENT_SHEET_IMPORT);
+            List<SheetVo> sheetVos = baseConfig.getSheetVos();
+            for (Object sheetElement : sheetElements) {
+                Element sheet = (Element) sheetElement;
+                SheetForImportVo sheetConfig = new SheetForImportVo();
+                sheetConfig.setExcelVo(baseConfig);
+                // 读取子节点
+                setComplexProperty(sheet, sheetConfig);
+                sheetVos.add(sheetConfig);
+            }
             // 处理 导入excel 时的依赖关系
             parseDependencies((ExcelOfImportVo) baseConfig);
             // 检查依赖关系
@@ -152,11 +165,22 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
      * @date 2017年4月7日下午3:03:46
      */
     private void readExcelExport() {
-        List excelExportElements = root.elements(ELEMENT_EXCEL_EXPORT);
+        List excelExportElements = root.elements(Constants.ELEMENT_EXCEL_EXPORT);
         for (Object obj : excelExportElements) {
-            Element element = (Element) obj;
-            AbstractBaseConfig baseConfig = new ExcelOfExportVo();
-            setComplexProperty(element, baseConfig);
+            Element element = (Element) obj;// sheet
+            ExcelVo baseConfig = new ExcelOfExportVo();
+            // read excelExport node attr
+            readAttr2Obj(element, baseConfig);
+            // read sheet node
+            List sheetElements = element.elements(Constants.ELEMENT_SHEET_EXPORT);
+            List<SheetVo> sheetVos = baseConfig.getSheetVos();
+            for (Object sheetElement : sheetElements) {
+                Element sheet = (Element) sheetElement;
+                SheetForExportVo sheetConfig = new SheetForExportVo();
+                sheetConfig.setExcelVo(baseConfig);
+                setComplexProperty(sheet, sheetConfig);
+                sheetVos.add(sheetConfig);
+            }
             // 处理 导入excel 时的依赖关系
             // parseDependencies((ExcelOfImportVo) baseConfig);
             // 检查依赖关系
@@ -177,19 +201,19 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
             Element element = (Element) elementIterator.next();
             AbstractBaseConfig baseConfig = null;
             switch (element.getQualifiedName()) {
-                case ELEMENT_EXCEL_EXPORT:
+                case Constants.ELEMENT_EXCEL_EXPORT:
                     baseConfig = new ExcelOfExportVo();
                     break;
-                case ELEMENT_EXCEL_IMPORT:
+                case Constants.ELEMENT_EXCEL_IMPORT:
                     baseConfig = new ExcelOfImportVo();
                     break;
-                case ELEMENT_EXCEL_MAP:
+                case Constants.ELEMENT_EXCEL_MAP:
                     baseConfig = new ExcelMap();
                     break;
-                case ELEMENT_STYLE:
+                case Constants.ELEMENT_STYLE:
                     baseConfig = new CellStyleVo();
                     break;
-                case ELEMENT_FONT:
+                case Constants.ELEMENT_FONT:
                     baseConfig = new FontVo();
                     break;
                 default:
@@ -226,27 +250,30 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
         Map<String, Map<String, Set<String>>> dependencies = new HashMap<>();// 依赖
         // 循环所有的 excelEntry
         // OgnlContext context = new OgnlContext();// 不需要 context
-        for (Map.Entry<String, ExcelEntry> entry : importVo.getExcelEntryMap().entrySet()) {
-            ExcelEntry excelEntry = entry.getValue();
-            // 当前 excelEntry 使用的是 if ，而不是直接指定 setter
-            Map<String, String> setterELs = excelEntry.getSetterELs();
-            if (CommonUtil.isEmpty(excelEntry.getSetter()) && setterELs != null && !setterELs.isEmpty()) {
-                Map<String, Set<String>> dependInfoMap = new HashMap<>();// 当前表头在判断时所依赖的其他表头的值
-                for (String condition : setterELs.keySet()) {
-                    // 通过 ognl 表达式解析出 依赖的属性
-                    try {
-                        SimpleNode parsedExpression = (SimpleNode) Ognl.parseExpression(condition);
-                        // iterateExpressionNode(context, parsedExpression, dependInfoMap);
-                        iterateExpressionNode(condition, parsedExpression, dependInfoMap);
-                    } catch (OgnlException e) {
-                        e.printStackTrace();
+        List<SheetVo> sheetVos = importVo.getSheetVos();
+        for (SheetVo sheetVo : sheetVos) {
+            for (Map.Entry<String, ExcelEntry> entry : sheetVo.getExcelEntryMap().entrySet()) {
+                ExcelEntry excelEntry = entry.getValue();
+                // 当前 excelEntry 使用的是 if ，而不是直接指定 setter
+                Map<String, String> setterELs = excelEntry.getSetterELs();
+                if (CommonUtil.isEmpty(excelEntry.getSetter()) && setterELs != null && !setterELs.isEmpty()) {
+                    Map<String, Set<String>> dependInfoMap = new HashMap<>();// 当前表头在判断时所依赖的其他表头的值
+                    for (String condition : setterELs.keySet()) {
+                        // 通过 ognl 表达式解析出 依赖的属性
+                        try {
+                            SimpleNode parsedExpression = (SimpleNode) Ognl.parseExpression(condition);
+                            // iterateExpressionNode(context, parsedExpression, dependInfoMap);
+                            iterateExpressionNode(condition, parsedExpression, dependInfoMap);
+                        } catch (OgnlException e) {
+                            e.printStackTrace();
+                        }
                     }
+                    excelEntry.setDependencies(dependInfoMap);
+                    dependencies.put(excelEntry.getHeader(), dependInfoMap);
                 }
-                excelEntry.setDependencies(dependInfoMap);
-                dependencies.put(excelEntry.getHeader(), dependInfoMap);
             }
+            ((SheetForImportVo) sheetVo).setDependencies(dependencies);
         }
-        importVo.setDependencies(dependencies);
     }
 
     // 循环 所有的 children
@@ -276,7 +303,7 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
     }
 
     /**
-     * 用于excelExport和excelImport
+     * 用于sheet
      *
      * @param element
      * @param baseConfig
@@ -322,9 +349,9 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
      */
     private void readMap2Obj(AbstractBaseConfig baseConfig, Element childElement) {
         CommonUtil.assertTrue("map".equals(childElement.getQualifiedName()), "当前元素不是 map 元素");
-        CommonUtil.assertTrue(baseConfig instanceof ExcelVo, "目前只有导入导出支持使用map节点，请检查xml配置" + childElement.asXML());
-        ExcelVo excelVo = (ExcelVo) baseConfig;
-        Map<String, ExcelEntry> entryMap = excelVo.getExcelEntryMap();
+        CommonUtil.assertTrue(baseConfig instanceof SheetVo, "目前只有导入导出支持使用map节点，请检查xml配置" + childElement.asXML());
+        SheetVo sheetVo = (SheetVo) baseConfig;
+        Map<String, ExcelEntry> entryMap = sheetVo.getExcelEntryMap();
         for (Iterator elementIterator = childElement.elementIterator("entry"); elementIterator.hasNext(); ) {
             Element entry = (Element) elementIterator.next();
             // 对每一个 entry 进行处理
@@ -340,7 +367,7 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
                 // 读取 entry 的子节点：遍历 entry 节点内部
                 readChildNode2Obj(entry, mappedEntry);
                 entryMap.put(mappedEntry.getHeader(), mappedEntry);
-                mappedEntry.setExcelVo(excelVo);
+                mappedEntry.setSheetVo(sheetVo);
             }
             // 没有 header 就没有读取此 entry
         }
@@ -348,13 +375,14 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
 
     private void readPropertiesForTemplate2Obj(AbstractBaseConfig baseConfig, Element childElement) {
         CommonUtil.assertTrue("propertiesForTemplate".equals(childElement.getQualifiedName()), "当前节点不是 propertiesForTemplate 节点");
-        CommonUtil.assertTrue(baseConfig instanceof ExcelVo, "配置对象不为 ExcelVo 对象，而 propertiesForTemplate 只适用于 ExcelVo 对象");
-        ExcelVo excelVo = (ExcelVo) baseConfig;
-        String startIndexForTemplate = excelVo.getStartIndexForTemplate();
+        // CommonUtil.assertTrue(baseConfig instanceof ExcelVo, "配置对象不为 ExcelVo 对象，而 propertiesForTemplate 只适用于 ExcelVo 对象");
+        CommonUtil.assertTrue(baseConfig instanceof SheetVo, "配置对象不为 SheetVo 对象，而 propertiesForTemplate 只适用于 SheetVo 对象");
+        SheetVo sheetVo = (SheetVo) baseConfig;
+        String startIndexForTemplate = sheetVo.getStartIndexForTemplate();
         String startIndex = CommonUtil.isNotEmpty(startIndexForTemplate) ? startIndexForTemplate : "A";
-        Boolean isConsecutive = excelVo.getIsConsecutive();
-        List<Integer> ignoreColumnIndex = CommonUtil.getIgnoreColumnIndex(excelVo.getIgnoreColumnIndex());
-        Map<String, ExcelEntry> entryMap = excelVo.getExcelEntryMap();
+        Boolean isConsecutive = sheetVo.getIsConsecutive();
+        List<Integer> ignoreColumnIndex = CommonUtil.getIgnoreColumnIndex(sheetVo.getIgnoreColumnIndex());
+        Map<String, ExcelEntry> entryMap = sheetVo.getExcelEntryMap();
         String mappedEntryKey = null;
         int index = CoreUtil.getColumnIndexFormExcelLocation(startIndex);// 这是开始设置值的那个索引
         // 处理每一个 entry 如果手动设置了 index，则直接输入，否则根据 startIndex 来计算
@@ -372,7 +400,7 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
                 if (Boolean.TRUE.equals(isConsecutive)) {
                     mappedEntryKey = String.valueOf(index);
                 } else {
-                    CommonUtil.throwArgument("当前" + excelVo.getId() + "的列(" + entry.getStringValue() + ")找不到对应的索引值，请确认是否设置正确");
+                    CommonUtil.throwArgument("当前" + sheetVo.getId() + "的列(" + entry.getStringValue() + ")找不到对应的索引值，请确认是否设置正确");
                 }
             }
             // 先从map中获取，如果已经有了，则覆写
@@ -387,7 +415,7 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
             // 读取 entry 的子节点：遍历 entry 节点内部
             readChildNode2Obj(entry, mappedEntry);
             entryMap.put(mappedEntryKey, mappedEntry);
-            mappedEntry.setExcelVo(excelVo);
+            mappedEntry.setSheetVo(sheetVo);
             // 没有 templateLocation 就没有读取此 entry
         }
     }
@@ -451,7 +479,7 @@ public class ExcelXmlConfigParser extends ExcelConfigParser {
      * @date 2017年4月7日下午5:37:45
      */
     private void setMapping2ExcelMap(AbstractBaseConfig baseConfig, Element childElement) {
-        if (ELEMENT_EXCEL_MAP.equals(childElement.getParent().getQualifiedName())) {
+        if (Constants.ELEMENT_EXCEL_MAP.equals(childElement.getParent().getQualifiedName())) {
             String property = null;
             String effectiveHeader = null;
             Attribute nameAttr = childElement.attribute("property");

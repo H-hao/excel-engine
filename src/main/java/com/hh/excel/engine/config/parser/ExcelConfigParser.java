@@ -15,13 +15,6 @@ import java.util.List;
  * @date 2017年4月6日上午11:26:59
  */
 public abstract class ExcelConfigParser {
-	protected static final String DEFAULT_MAPPER_FILE_NAME = "excelMapper";// 默认配置文件名
-	// 各个节点名称
-	protected static final String ELEMENT_EXCEL_EXPORT = "excelExport";
-	protected static final String ELEMENT_EXCEL_IMPORT = "excelImport";
-	protected static final String ELEMENT_EXCEL_MAP = "excelMap";
-	protected static final String ELEMENT_STYLE = "style";
-	protected static final String ELEMENT_FONT = "font";
 
 	/**
 	 * 所有的 配置信息 都汇总到此字段中

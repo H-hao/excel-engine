@@ -1,14 +1,12 @@
 package com.hh.excel.engine.core.engine;
 
-import java.io.InputStream;
-import java.util.List;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.List;
 
 public interface ExcelWebEngine extends ExcelEngine {
 
-	void exportExcel(HttpServletRequest request, HttpServletResponse response, String mapperId, List<? extends Object> data);
+    void exportExcel(HttpServletRequest request, HttpServletResponse response, String mapperId, List<List<?>> data);
 
-	List<Object> importExcel(HttpServletRequest request, HttpServletResponse response, String mapperId);
+    List<List<Object>> importExcel(HttpServletRequest request, HttpServletResponse response, String mapperId);
 }

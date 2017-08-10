@@ -24,7 +24,7 @@ public class DefaultExcelWebEngine extends DefaultExcelEngine implements ExcelWe
     }
 
     @Override
-    public void exportExcel(HttpServletRequest request, HttpServletResponse response, String mapperId, List<? extends Object> data) {
+    public void exportExcel(HttpServletRequest request, HttpServletResponse response, String mapperId, List<List<?>> data) {
         ServletOutputStream servletOutputStream = null;
         ExcelOfExportVo exportVo = (ExcelOfExportVo) baseConfigs.get(mapperId);
         try {
@@ -39,7 +39,7 @@ public class DefaultExcelWebEngine extends DefaultExcelEngine implements ExcelWe
             e.printStackTrace();
         }
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("导出 Excel([{}]) 到 Web -> 设置请求头完成，准备导出数据(size=[{}])到响应流", mapperId, data.size());
+            LOGGER.debug("导出 Excel([{}]) 到 Web -> 设置请求头完成，准备导出数据(sheet.size=[{}])到响应流", mapperId, data.size());
         }
         super.exportExcel(servletOutputStream, mapperId, data);
     }
@@ -53,7 +53,7 @@ public class DefaultExcelWebEngine extends DefaultExcelEngine implements ExcelWe
      */
     @Override
     @Deprecated
-    public List<Object> importExcel(HttpServletRequest request, HttpServletResponse response, String mapperId) {
+    public List<List<Object>> importExcel(HttpServletRequest request, HttpServletResponse response, String mapperId) {
         return null;
     }
 

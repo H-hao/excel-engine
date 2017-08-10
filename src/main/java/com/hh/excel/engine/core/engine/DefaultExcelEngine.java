@@ -51,8 +51,8 @@ import java.util.Map.Entry;
  */
 public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngine {
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultExcelEngine.class);
-    private static final String HEADER_STYLE = "headerStyle";// cellstylemap中表头的样式
-    private static final String DATA_STYLE_PREFIX = "dataStyleWith";// cellstylemap中表头的样式
+    // private static final String HEADER_STYLE = "headerStyle";// cellstylemap中表头的样式
+    // private static final String DATA_STYLE_PREFIX = "dataStyleWith";// cellstylemap中表头的样式
     private EngineConfiguration engineConfiguration;// 这是针对 engine 配置的对象
     protected Map<String, AbstractBaseConfig> baseConfigs;
 
@@ -62,9 +62,9 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
     }
 
     @Override
-    public void exportExcel(OutputStream outputStream, String mapperId, List<? extends Object> data) {
+    public void exportExcel(OutputStream outputStream, String mapperId, List<List<?>> data) {
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("导出 Excel (mapperId=[{}], data.size=[{}])", mapperId, data.size());
+            LOGGER.info("导出 Excel (mapperId=[{}], sheet.size=[{}])", mapperId, data.size());
         }
         CommonUtil.assertArgumentNotEmpty(mapperId, "必须设置mapper文件中对应的id值：" + mapperId);
         CommonUtil.assertArgumentNotNull(outputStream, "未正确读取到流：" + outputStream);
@@ -78,7 +78,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
             doExportExcel(outputStream, data, exportVo);
         }
         if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("导出 Excel 完成 (mapperId=[{}], data.size=[{}])", mapperId, data.size());
+            LOGGER.info("导出 Excel 完成 (mapperId=[{}], sheet.size=[{}])", mapperId, data.size());
         }
     }
 
@@ -86,12 +86,12 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
      * 在预处理之后进行导出主流程，只需要添加数据；注意：这是模版的导出方式
      *
      * @param outputStream
-     * @param data
+     * @param data         data 对应所有 sheet 中所有 row 的 实体集合
      * @param exportVo
      * @author huanghao
      * @date 2017年4月25日下午4:54:52
      */
-    private void doExportExcelWithTemplate(OutputStream outputStream, List<? extends Object> data, ExcelOfExportVo exportVo) {
+    private void doExportExcelWithTemplate(OutputStream outputStream, List<List<?>> data, ExcelOfExportVo exportVo) {
         // 通过接口来获取 模版文件
         String templateLocation = exportVo.getTemplateLocation();
         Workbook workbook = null;
@@ -109,13 +109,31 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         } catch (InvalidFormatException | IOException e) {
             e.printStackTrace();
         }
-        // TODO 目前使用一个 sheet
+        // 添加数据
         assertWorkbook(workbook);
         Map<String, CellStyle> mappedCellStyle = createMappedCellStyle(workbook, exportVo);
-        // for (Sheet sheet : workbook) {
-        Sheet sheet = workbook.getSheetAt(0);
-        addDataWithTemplate(sheet, mappedCellStyle, exportVo, data);
-        // }
+        List<SheetVo> sheetVos = exportVo.getSheetVos();
+
+        int sizeOfSheetVos = sheetVos.size();
+        int numberOfSheets = workbook.getNumberOfSheets();
+        int sizeOfData = data.size();
+        int min = Math.min(Math.min(numberOfSheets, sizeOfSheetVos), sizeOfData);
+
+        for (int index = 0; index < min; index++) {
+            SheetVo sheetVo = sheetVos.get(index);
+            Sheet sheet = workbook.getSheetAt(index);
+            // 使用模版时，模版的名称已经确定，但是如果明确指定了一个名称，则覆盖
+            workbook.setSheetName(index, sheetVo.getName());
+            addDataWithTemplate(sheet, mappedCellStyle, (SheetForExportVo) sheetVo, data.get(index));
+        }
+        /*int sheetIndex = 0;
+        for (Sheet sheet : workbook) {
+            SheetVo sheetVo = sheetVos.get(sheetIndex);
+            // 使用模版时，模版的名称已经确定
+            // Sheet sheet = workbook.getSheetAt(0);
+            addDataWithTemplate(sheet, mappedCellStyle, (SheetForExportVo) sheetVo, data);
+            sheetIndex++;
+        }*/
         // 输出为 outputStream
         try {
             workbook.write(outputStream);
@@ -135,22 +153,31 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
      * @author huanghao
      * @date 2017年4月25日下午4:54:52
      */
-    private void doExportExcel(OutputStream outputStream, List<? extends Object> data, ExcelOfExportVo exportVo) {
+    private void doExportExcel(OutputStream outputStream, List<List<?>> data, ExcelOfExportVo exportVo) {
         Workbook workbook = createWorkbook(exportVo.getExportType());
-        // TODO 目前只支持单个sheet
-        Sheet sheet = workbook.createSheet();
+
         // -------------------- 根据配置生成所有涉及到的 cellStyle/Font ----------------------
         // 因为 font cellStyle 与 WorkBook 相关，所以必须在导出的时候实例化 font cellStyle，根据配置实例化需要的 font cellStyle，但是默认的必须生成
         Map<String, CellStyle> mappedCellStyle = createMappedCellStyle(workbook, exportVo);
-        // -------------------- 添加内容到 excel ----------------------
-        int rowNum = exportVo.getStartRowNo();// 行号
-        // 表头
-        rowNum = addHeader(sheet, mappedCellStyle.get(HEADER_STYLE), exportVo, rowNum);
-        sheet.createFreezePane(exportVo.getFreezeLeft(), rowNum > exportVo.getFreezeTop() ? rowNum : exportVo.getFreezeTop());
-        // 数据
-        addData(sheet, mappedCellStyle, exportVo, data, rowNum);
 
-        applyConfig(sheet, exportVo);
+        List<SheetVo> sheetVos = exportVo.getSheetVos();
+        for (int index = 0; index < Math.min(sheetVos.size(), data.size()); index++) {
+            SheetForExportVo sheetForExportVo = (SheetForExportVo) sheetVos.get(index);
+            Sheet sheet = workbook.createSheet();
+            workbook.setSheetName(index, sheetForExportVo.getName());
+            // -------------------- 添加内容到 excel ----------------------
+            int rowNum = sheetForExportVo.getStartRowNo();// 行号
+            // 表头
+            // String headerStyleRef = sheetForExportVo.getHeaderStyleRef();
+            rowNum = addHeader(sheet, mappedCellStyle.get(getFinalHeaderStyleRef(sheetForExportVo)), sheetForExportVo, rowNum);
+            applyFreezePane(sheetForExportVo, sheet, rowNum);
+
+            // sheet.createFreezePane(sheetForExportVo.getFreezeLeft(), sheetForExportVo.getFreezeTop());
+            // 数据
+            addData(sheet, mappedCellStyle, sheetForExportVo, data.get(index), rowNum);
+
+            applyConfig(sheet, sheetForExportVo);
+        }
 
         // 输出为 outputStream
         try {
@@ -162,11 +189,11 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         }
     }
 
-    private int addHeader(Sheet sheet, CellStyle headerStyle, ExcelOfExportVo exportVo, int rowNum) {
+    private int addHeader(Sheet sheet, CellStyle headerStyle, SheetForExportVo sheetVo, int rowNum) {
         // add header
         Row header = sheet.createRow(rowNum++);
         int cellNum = 0;// 列号
-        for (Entry<String, ExcelEntry> entry : exportVo.getExcelEntryMap().entrySet()) {
+        for (Entry<String, ExcelEntry> entry : sheetVo.getExcelEntryMap().entrySet()) {
             Cell cell = header.createCell(cellNum++);
             cell.setCellStyle(headerStyle);
             cell.setCellValue(entry.getValue().getHeader());
@@ -174,21 +201,35 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         return rowNum;
     }
 
+    private void applyFreezePane(SheetForExportVo sheetForExportVo, Sheet sheet, int rowNum) {
+        // 冻结表头 - 没有设置就不冻结，如果设置的值大于 rowNum，则取 rowNum
+        int srcFreezeTop = sheetForExportVo.getFreezeTop();
+        int freezeTop = rowNum < srcFreezeTop ? rowNum : srcFreezeTop;
+        // 冻结左边部分
+        int size = sheetForExportVo.getExcelEntryMap().size();
+        int srcFreezeLeft = sheetForExportVo.getFreezeLeft();
+        int freezeLeft = size < srcFreezeLeft ? size : srcFreezeLeft;
+
+        sheet.createFreezePane(freezeLeft, freezeTop);
+    }
+
     /**
      * 用在 使用模版的情况
      *
      * @param sheet
      * @param dataCellStyleMap
-     * @param exportVo
+     * @param sheetVo
      * @param data
      */
-    private void addDataWithTemplate(Sheet sheet, Map<String, CellStyle> dataCellStyleMap, ExcelOfExportVo exportVo, List<?> data) {
+    private void addDataWithTemplate(Sheet sheet, Map<String, CellStyle> dataCellStyleMap, SheetForExportVo sheetVo, List<?> data) {
+        // SheetVo sheetVo = exportVo.getSheetVos().get(sheetIndex);
+        ExcelVo excelVo = sheetVo.getExcelVo();
         // 是否需要 断言 sheet
         int rowFailCount = 0;
         // 找到定位点
-        String startIndex = exportVo.getStartIndexForTemplate();
+        String startIndex = sheetVo.getStartIndexForTemplate();
         int rowIndex = CoreUtil.getRowIndexFormExcelLocation(startIndex);
-        List<Integer> ignores = CommonUtil.getIgnoreColumnIndex(exportVo.getIgnoreColumnIndex());
+        List<Integer> ignores = CommonUtil.getIgnoreColumnIndex(sheetVo.getIgnoreColumnIndex());
         // 添加数据
         for (Object datum : data) {
             Row row = sheet.getRow(rowIndex);
@@ -197,7 +238,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
             }
             try {
                 int cellFailCount = 0;
-                for (Entry<String, ExcelEntry> entry : exportVo.getExcelEntryMap().entrySet()) {
+                for (Entry<String, ExcelEntry> entry : sheetVo.getExcelEntryMap().entrySet()) {
                     ExcelEntry excelEntry = entry.getValue();
                     int cellNum = Integer.parseInt(excelEntry.getColumnIndex());
                     if (ignores.contains(cellNum)) {
@@ -208,16 +249,16 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                         cell = row.createCell(cellNum);
                     }
                     try {
-                        Object value = getValueFormInstance(datum, excelEntry);
-                        setCell(cell, value, dataCellStyleMap, excelEntry);
+                        Object value = getValueSetToCell(datum, excelEntry);
+                        setCell(cell, value, dataCellStyleMap, sheetVo.getStyleRef(), excelEntry);
                     } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException | ParseException e) {
                         e.printStackTrace();
-                        cellFailCount = increaseColumnAndThrowIfPossible(cellFailCount, exportVo.getColumnFailThreshold());
+                        cellFailCount = increaseColumnAndThrowIfPossible(cellFailCount, excelVo.getColumnFailThreshold());
                     }
                 }
             } catch (OutOfColumnThresholdException e) {
                 e.printStackTrace();
-                rowFailCount = increaseRowAndThrowIfPossible(rowFailCount, exportVo.getRowFailThreshold());
+                rowFailCount = increaseRowAndThrowIfPossible(rowFailCount, excelVo.getRowFailThreshold());
             }
             rowIndex++;
         }
@@ -228,50 +269,63 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
      *
      * @param sheet
      * @param dataCellStyleMap
-     * @param exportVo
+     * @param sheetVo
      * @param data
      * @param rowNum
      */
-    private void addData(Sheet sheet, Map<String, CellStyle> dataCellStyleMap, ExcelOfExportVo exportVo, List<? extends Object> data, int rowNum) {
+    private void addData(Sheet sheet, Map<String, CellStyle> dataCellStyleMap, SheetForExportVo sheetVo, List data, int rowNum) {
+        ExcelVo excelVo = sheetVo.getExcelVo();
         int rowFailCount = 0;
-        for (Object thisData : data) {
+        for (Object datum : data) {
             Row row = sheet.createRow(rowNum++);
             try {
                 int cellFailCount = 0;
                 int cellNum = 0;
-                for (Entry<String, ExcelEntry> entry : exportVo.getExcelEntryMap().entrySet()) {
+                for (Entry<String, ExcelEntry> entry : sheetVo.getExcelEntryMap().entrySet()) {
                     Cell cell = row.createCell(cellNum++);
                     ExcelEntry excelEntry = entry.getValue();
                     try {
-                        Object value = getValueFormInstance(thisData, excelEntry);
-                        setCell(cell, value, dataCellStyleMap, excelEntry);
+                        Object value = getValueSetToCell(datum, excelEntry);
+                        setCell(cell, value, dataCellStyleMap, sheetVo.getStyleRef(), excelEntry);
                     } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | ParseException e) {
                         // 设置值失败
                         e.printStackTrace();
-                        cellFailCount = increaseColumnAndThrowIfPossible(cellFailCount, exportVo.getColumnFailThreshold());
+                        cellFailCount = increaseColumnAndThrowIfPossible(cellFailCount, excelVo.getColumnFailThreshold());
                     }
                 }
             } catch (OutOfColumnThresholdException e) {
                 e.printStackTrace();
-                rowFailCount = increaseRowAndThrowIfPossible(rowFailCount, exportVo.getRowFailThreshold());
+                rowFailCount = increaseRowAndThrowIfPossible(rowFailCount, excelVo.getRowFailThreshold());
             }
         }
     }
 
-    private Object getValueFormInstance(Object thisData, ExcelEntry excelEntry) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-        CommonUtil.assertArgumentNotNull(thisData, "对象不能为 null");
+    private Object getValueSetToCell(Object datum, ExcelEntry excelEntry) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        Object value;
+        // 有可能用户就设置为 空字符串
+        // if (CommonUtil.isNotEmpty(excelEntry.getValue())) {
+        if (excelEntry.getValue() != null) {
+            value = excelEntry.getValue();
+        } else {
+            value = getValueFormInstance(datum, excelEntry);
+        }
+        return value;
+    }
+
+    private Object getValueFormInstance(Object datum, ExcelEntry excelEntry) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
+        CommonUtil.assertArgumentNotNull(datum, "对象不能为 null");
         CommonUtil.assertArgumentNotNull(excelEntry, "excelEntry 对象不能为 null");
         Object value = null;
         // 获取 getter（如果是 ELs 就进行转换）
         String getter = excelEntry.getGetter();
         if (CommonUtil.isEmpty(getter)) {
             // 获取 ELs 再转换
-            getter = getGetterFormEls(thisData, excelEntry.getGetterELs());
+            getter = getGetterFormEls(datum, excelEntry.getGetterELs());
         }
         if (getter != null) {
             // 获取值
             try {
-                value = PropertyUtils.getProperty(thisData, getter);
+                value = PropertyUtils.getProperty(datum, getter);
             } catch (NestedNullException e) {
                 if (!e.getMessage().contains("Null property value for")) {
                     CommonUtil.throwArgument("获取属性(" + getter + ")时出现异常(" + e.getMessage() + ")");
@@ -289,7 +343,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         return value;
     }
 
-    private String getGetterFormEls(Object thisData, Map<String, String> getterELs) {
+    private String getGetterFormEls(Object datum, Map<String, String> getterELs) {
         String getter = null;
         for (Entry<String, String> entry : getterELs.entrySet()) {
             String test = entry.getKey();// 条件：if 的 test 值
@@ -298,7 +352,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                 continue;
             }
             try {
-                if (parseCondition(thisData, test)) {
+                if (parseCondition(datum, test)) {
                     getter = text;
                     break;
                 }
@@ -331,22 +385,26 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         }
     }
 
-    private void setCell(Cell cell, Object value, Map<String, CellStyle> cellStyleMap, ExcelEntry excelEntry)
+    private void setCell(Cell cell, Object value, Map<String, CellStyle> cellStyleMap, String styleRef, ExcelEntry excelEntry)
             throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, ParseException {
         if (value != null) {
             // 如果cell有对应的数据才进行操作，否则直接跳过
             Class<? extends Object> dataClass = value.getClass();
+            // String styleRef = sheetVo.getStyleRef();
+            String styleKeyWithDataFormat;
             // 缺省会使用 double 和 datetime 的 dataFormat
             String dataFormat = excelEntry.getDataFormat();
             if (Number.class.equals(dataClass.getGenericSuperclass())) {
                 cell.setCellType(CellType.NUMERIC);
                 cell.setCellValue(Double.valueOf(value.toString()));
-                CellStyle cellStyle = cellStyleMap.get(DATA_STYLE_PREFIX + (CommonUtil.isEmpty(dataFormat) ? ConfigMapping.DATA_FORMAT_NAME_DOUBLE : dataFormat));
+                styleKeyWithDataFormat = getStyleKeyWithDataFormat(styleRef, dataFormat, ConfigMapping.DATA_FORMAT_NAME_DOUBLE);
+                CellStyle cellStyle = cellStyleMap.get(styleKeyWithDataFormat);
                 cell.setCellStyle(cellStyle);
             } else if (Date.class.equals(dataClass)) {
                 cell.setCellType(CellType.NUMERIC);
                 cell.setCellValue((Date) value);
-                CellStyle cellStyle = cellStyleMap.get(DATA_STYLE_PREFIX + (CommonUtil.isEmpty(dataFormat) ? ConfigMapping.DATA_FORMAT_NAME_DATE_TIME : dataFormat));
+                styleKeyWithDataFormat = getStyleKeyWithDataFormat(styleRef, dataFormat, ConfigMapping.DATA_FORMAT_NAME_DATE_TIME);
+                CellStyle cellStyle = cellStyleMap.get(styleKeyWithDataFormat);
                 cell.setCellStyle(cellStyle);
             } else {
                 // 默认都是 string 类型
@@ -363,7 +421,8 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                 // } else {
                 cell.setCellType(CellType.STRING);
                 cell.setCellValue(value.toString());
-                CellStyle cellStyle = cellStyleMap.get(DATA_STYLE_PREFIX + (CommonUtil.isEmpty(dataFormat) ? ConfigMapping.DATA_FORMAT_NAME_STRING : dataFormat));
+                styleKeyWithDataFormat = getStyleKeyWithDataFormat(styleRef, dataFormat, ConfigMapping.DATA_FORMAT_NAME_STRING);
+                CellStyle cellStyle = cellStyleMap.get(styleKeyWithDataFormat);
                 cell.setCellStyle(cellStyle);
                 // }
             }
@@ -394,13 +453,13 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
      * 应用 xml 中的一些配置，包含了：页眉页脚，列宽行高
      *
      * @param sheet
-     * @param exportVo
+     * @param sheetVo
      */
-    private void applyConfig(Sheet sheet, ExcelOfExportVo exportVo) {
-        applyPrint(sheet, exportVo);
+    private void applyConfig(Sheet sheet, SheetForExportVo sheetVo) {
+        applyPrint(sheet, sheetVo);
 
         // 应用 宽度和高度 的配置
-        applySize(sheet, exportVo);
+        applySize(sheet, sheetVo);
 
     }
 
@@ -408,9 +467,9 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
      * 应用 xml 中与 打印 相关的配置
      *
      * @param sheet
-     * @param exportVo
+     * @param sheetVo
      */
-    private void applyPrint(Sheet sheet, ExcelOfExportVo exportVo) {
+    private void applyPrint(Sheet sheet, SheetForExportVo sheetVo) {
 
         //region 页眉与页脚(打印预览中可以查看) 的设置
         /*Footer footer = sheet.getFooter();
@@ -427,7 +486,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
 
     }
 
-    private void applySize(Sheet sheet, ExcelOfExportVo exportVo) {
+    private void applySize(Sheet sheet, SheetForExportVo sheetVo) {
         // 设置默认 列宽 行高 到 sheet 上
 
         //region 宽度 的设置
@@ -435,7 +494,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         if (row != null) {
             short lastCellNum = row.getLastCellNum();
             for (int i = 0; i < lastCellNum; i++) {
-                ExcelEntry excelEntry = exportVo.getExcelEntryMap().get(row.getCell(i).getStringCellValue());
+                ExcelEntry excelEntry = sheetVo.getExcelEntryMap().get(row.getCell(i).getStringCellValue());
                 if (excelEntry != null) {
                     // 宽度设置的流程 width(continue) -> autoWidth -> maxWidth
                     String width = excelEntry.getWidth();
@@ -451,7 +510,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                     }
                     int columnWidth = sheet.getColumnWidth(i);
                     // 判断最大宽度
-                    int maxColumnWidth = exportVo.getMaxColumnWidth();
+                    int maxColumnWidth = sheetVo.getMaxColumnWidth();
                     if (columnWidth > maxColumnWidth) {
                         sheet.setColumnWidth(i, maxColumnWidth);
                     }
@@ -460,7 +519,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         }
         //endregion
 
-        //region 高度的设置
+        //region TODO 高度的设置
         // row.setHeight();
         //endregion
     }
@@ -476,6 +535,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
      */
     private Map<String, CellStyle> createMappedCellStyle(Workbook workbook, ExcelOfExportVo exportVo) {
         assertWorkbook(workbook);
+        // ExcelOfExportVo exportVo = (ExcelOfExportVo) sheetVo.getExcelVo();
         // 映射成功的缓存集合
         Map<String, Font> mappedFont = new HashMap<>();// 已根据xml中的配置映射的 Font 集合
         Map<String, CellStyle> mappedCellStyle = new HashMap<>();// 已根据xml中的配置映射的 CellStyle 集合
@@ -485,25 +545,73 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         // 流程：首先扫描需要使用的font和cellStyle，再映射默认的font和CellStyle，再根据CellStyle中引入的font，进行映射font，映射CellStyle，并将他们分别存入相应的map中
 
         // 还是只有根据依赖来实例化 font cellStyle，因为就是实例化了所有的默认 font 和 cellStyle，也需要根据依赖来实例化 data 和 header 的 cellStyle
-        String styleRef = exportVo.getStyleRef();// cellStyle for data
-        String headerStyleRef = exportVo.getHeaderStyleRef();// cellStyle for header
         Set<String> dataFormatSet = new HashSet<>();// custom data format
-        for (Entry<String, ExcelEntry> entry : exportVo.getExcelEntryMap().entrySet()) {
-            String format = entry.getValue().getDataFormat();
-            // 要不要排除？默认的配置到底怎么处理，是每次都创建，还是只保留配置，每次通过调用方法获取？
-            // 采用 保留配置的方式
-            // if (!ConfigMapping.DATA_FORMAT_MAP.contains(format)) {
-            if (CommonUtil.isNotEmpty(format)) {
-                dataFormatSet.add(format);// 所有都添加进来
+
+        // 多个 sheet
+        for (SheetVo sheetVo : exportVo.getSheetVos()) {
+
+            // 添加缺省会使用的 dataFormat
+            dataFormatSet.add(ConfigMapping.DATA_FORMAT_NAME_STRING);
+            dataFormatSet.add(ConfigMapping.DATA_FORMAT_NAME_DOUBLE);
+            dataFormatSet.add(ConfigMapping.DATA_FORMAT_NAME_DATE_TIME);
+
+            // 每一个 sheet 中的 dataFormat
+            for (Entry<String, ExcelEntry> entry : sheetVo.getExcelEntryMap().entrySet()) {
+                String format = entry.getValue().getDataFormat();
+                // 要不要排除？默认的配置到底怎么处理，是每次都创建，还是只保留配置，每次通过调用方法获取？
+                // 采用 保留配置的方式
+                // if (!ConfigMapping.DATA_FORMAT_MAP.contains(format)) {
+                if (CommonUtil.isNotEmpty(format)) {
+                    dataFormatSet.add(format);// 所有都添加进来
+                }
             }
+
+            // 每一个 sheet 中的 style ref
+            // 根据 styleRef 与 headerStyleRef 创建 cellStyle（如果后期添加其他的 cellStyle 属性，则这里就还需要添加创建 cellStyle 的代码）
+            String finalStyleRef = getFinalStyleRef((SheetForExportVo) sheetVo);// cellStyle for data
+            String finalHeaderStyleRef = getFinalHeaderStyleRef((SheetForExportVo) sheetVo);// cellStyle for header
+
+            createHeaderCellStyle(mappedCellStyle, mappedFont, workbook, finalHeaderStyleRef);// 创建 header style
+            createDataCellStyle(mappedCellStyle, mappedFont, workbook, finalStyleRef, dataFormatSet);// 创建 data style
+
         }
 
-        // 根据 styleRef 与 headerStyleRef 创建 cellStyle（如果后期添加其他的 cellStyle 属性，则这里就还需要添加创建 cellStyle 的代码）
-        createHeaderCellStyle(mappedCellStyle, mappedFont, workbook, headerStyleRef);// 创建 header style
-
-        createDataCellStyle(mappedCellStyle, mappedFont, workbook, styleRef, dataFormatSet);// 创建 data style
 
         return mappedCellStyle;
+    }
+
+    /**
+     * 根据 配置的 styleRef 获取最终的 styleRef
+     *
+     * @param sheetVo
+     * @return
+     */
+    private String getFinalStyleRef(SheetForExportVo sheetVo) {
+        ExcelVo excelVo = sheetVo.getExcelVo();
+        String globalStyleRef = ((ExcelOfExportVo) excelVo).getGlobalStyleRef();
+        String styleRef = sheetVo.getStyleRef();
+        String s = CommonUtil.isEmpty(styleRef) ? globalStyleRef : styleRef;
+        if (CommonUtil.isEmpty(s)) {
+            return ExcelConfiguration.DEFAULT_CELL_STYLE;
+        }
+        return s;
+    }
+
+    /**
+     * 根据 配置的 styleRef 获取最终的 styleRef
+     *
+     * @param sheetVo
+     * @return
+     */
+    private String getFinalHeaderStyleRef(SheetForExportVo sheetVo) {
+        ExcelVo excelVo = sheetVo.getExcelVo();
+        String globalHeaderStyleRef = ((ExcelOfExportVo) excelVo).getGlobalHeaderStyleRef();
+        String headerStyleRef = sheetVo.getHeaderStyleRef();
+        String s = CommonUtil.isEmpty(headerStyleRef) ? globalHeaderStyleRef : headerStyleRef;
+        if (CommonUtil.isEmpty(s)) {
+            return ExcelConfiguration.DEFAULT_HEADER_STYLE;
+        }
+        return s;
     }
 
     /**
@@ -515,17 +623,20 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
     private void createHeaderCellStyle(Map<String, CellStyle> mappedCellStyle, Map<String, Font> mappedFont,
                                        Workbook workbook, String headerStyleRef) {
         CellStyle cellStyle;
-        if (CommonUtil.isEmpty(headerStyleRef)) {
-            // 获取默认的 headerStyle
-            CellStyleVo headerStyleVo = (CellStyleVo) baseConfigs.get(ExcelConfiguration.DEFAULT_HEADER_STYLE);
-            cellStyle = createCellStyleByCellStyleVo(workbook, headerStyleVo, mappedCellStyle, mappedFont);
-        } else {
-            CellStyleVo headerStyleVo = (CellStyleVo) baseConfigs.get(headerStyleRef);
-            CommonUtil.assertArgumentNotNull(headerStyleVo, "未找到对应的cellStyle(headerStyleRef='" + headerStyleRef + "')");
-            // 创建 CellStyle
-            cellStyle = createCellStyleByCellStyleVo(workbook, headerStyleVo, mappedCellStyle, mappedFont);
-        }
-        mappedCellStyle.put(HEADER_STYLE, cellStyle);
+        // 取消这里的判断，因为前面获取到的为null时，已设置为默认的 DEFAULT_HEADER_STYLE
+        // if (CommonUtil.isEmpty(headerStyleRef)) {
+        //     // 获取默认的 headerStyle
+        //     CellStyleVo headerStyleVo = (CellStyleVo) baseConfigs.get(ExcelConfiguration.DEFAULT_HEADER_STYLE);
+        //     cellStyle = createCellStyleByCellStyleVoIfPossible(workbook, headerStyleVo, mappedCellStyle, mappedFont);
+        // } else {
+        CellStyleVo headerStyleVo = (CellStyleVo) baseConfigs.get(headerStyleRef);
+        CommonUtil.assertArgumentNotNull(headerStyleVo, "未找到对应的cellStyle(headerStyleRef='" + headerStyleRef + "')");
+        // 创建 CellStyle
+        cellStyle = createCellStyleByCellStyleVoIfPossible(workbook, headerStyleVo, mappedCellStyle, mappedFont);
+        // }
+        // TODO 这里的 key 直接换为 StyleId
+        // mappedCellStyle.put(HEADER_STYLE, cellStyle);
+        mappedCellStyle.put(headerStyleRef, cellStyle);
     }
 
     /**
@@ -539,20 +650,18 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                                      Workbook workbook, String styleRef, Set<String> dataFormats) {
         assertWorkbook(workbook);
         // 关联 dataFormat，注意：每一个 dataFormat 都需要关联一个新的 cellStyle，只有最后一次设置的 dataFormat 才有效
-        // 添加缺省会使用的 dataFormat
-        dataFormats.add(ConfigMapping.DATA_FORMAT_NAME_STRING);
-        dataFormats.add(ConfigMapping.DATA_FORMAT_NAME_DOUBLE);
-        dataFormats.add(ConfigMapping.DATA_FORMAT_NAME_DATE_TIME);
+
+        // dataFormat 不同，则 cellStyle 也是不同的对象
         for (String dataFormat : dataFormats) {
             CellStyle cellStyle;
-            if (CommonUtil.isEmpty(styleRef)) {
-                // 获取默认的 dataStyle
-                CellStyleVo cellStyleVo = (CellStyleVo) baseConfigs.get(ExcelConfiguration.DEFAULT_CELL_STYLE);
-                cellStyle = createCellStyleByCellStyleVo(workbook, cellStyleVo, mappedCellStyle, mappedFont);
-            } else {
-                CellStyleVo cellStyleVo = (CellStyleVo) baseConfigs.get(styleRef);
-                cellStyle = createCellStyleByCellStyleVo(workbook, cellStyleVo, mappedCellStyle, mappedFont);
-            }
+            // if (CommonUtil.isEmpty(styleRef)) {
+            //     // 获取默认的 dataStyle
+            //     CellStyleVo cellStyleVo = (CellStyleVo) baseConfigs.get(ExcelConfiguration.DEFAULT_CELL_STYLE);
+            //     cellStyle = createCellStyleByCellStyleVoIfPossible(workbook, cellStyleVo, mappedCellStyle, mappedFont);
+            // } else {
+            CellStyleVo cellStyleVo = (CellStyleVo) baseConfigs.get(styleRef);
+            cellStyle = createCellStyleByCellStyleVoIfPossible(workbook, cellStyleVo, mappedCellStyle, mappedFont);
+            // }
             // 处理 dataFormat
             if (CommonUtil.isNotEmpty(dataFormat)) {
                 if (ConfigMapping.DATA_FORMAT_MAP.containsKey(dataFormat)) {
@@ -561,8 +670,26 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                     cellStyle.setDataFormat(workbook.createDataFormat().getFormat(dataFormat));
                 }
             }
-            mappedCellStyle.put(DATA_STYLE_PREFIX + dataFormat, cellStyle);
+            // key 的选取
+            // mappedCellStyle.put(DATA_STYLE_PREFIX + dataFormat, cellStyle);
+            mappedCellStyle.put(getStyleKeyWithDataFormat(styleRef, dataFormat, ""), cellStyle);
         }
+    }
+
+    private String getStyleKeyWithDataFormat(String styleRef, String dataFormat, String defaultDataFormat) {
+        String key = "";
+        if (CommonUtil.isEmpty(styleRef)) {
+            key += ExcelConfiguration.DEFAULT_CELL_STYLE;
+        } else {
+            key += styleRef;
+        }
+        key += "With";
+        if (CommonUtil.isEmpty(dataFormat)) {
+            key += defaultDataFormat;
+        } else {
+            key += dataFormat;
+        }
+        return key;
     }
 
     /**
@@ -573,6 +700,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
      * @author huanghao
      * @date 2017年4月11日下午5:40:23
      */
+    @Deprecated
     private CellStyle createCellStyle(Workbook workbook, String cellStyleRef, Map<String, CellStyle> mappedCellStyle,
                                       Map<String, Font> mappedFont, CellStyle defaultCellStyle) {
         assertWorkbook(workbook);
@@ -581,7 +709,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         if (CommonUtil.isEmpty(cellStyleRef)) {
             SrcCellStyle = defaultCellStyle;
         } else {
-            SrcCellStyle = createCellStyleByCellStyleVo(workbook, (CellStyleVo) baseConfigs.get(cellStyleRef), mappedCellStyle, mappedFont);
+            SrcCellStyle = createCellStyleByCellStyleVoIfPossible(workbook, (CellStyleVo) baseConfigs.get(cellStyleRef), mappedCellStyle, mappedFont);
             CommonUtil.assertArgumentNotNull(SrcCellStyle, "未找到对应的cellStyle(cellStyleRef='" + cellStyleRef + "')");
         }
         // 属性迁移
@@ -601,10 +729,16 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
      * @author huanghao
      * @date 2017年4月25日下午3:08:07
      */
-    private CellStyle createCellStyleByCellStyleVo(Workbook workbook, CellStyleVo cellStyleVo,
-                                                   Map<String, CellStyle> mappedCellStyle, Map<String, Font> mappedFont) {
+    private CellStyle createCellStyleByCellStyleVoIfPossible(Workbook workbook, CellStyleVo cellStyleVo,
+                                                             Map<String, CellStyle> mappedCellStyle, Map<String, Font> mappedFont) {
         assertWorkbook(workbook);
         CommonUtil.assertArgumentNotNull(cellStyleVo, "映射生成 POI 对象 CellStyle 的源 cellStyleVo 为：" + cellStyleVo);
+
+        // 如果已存在，则跳过，当存在多个 sheet 时，（header, dataFormat 都）会出现已存在的情况
+        if (mappedCellStyle.containsKey(cellStyleVo.getId())) {
+            return mappedCellStyle.get(cellStyleVo.getId());
+        }
+
         CellStyle cellStyle = workbook.createCellStyle();
         try {
             // TODO 这里复制的时候，会自动将值转换为其他类型，尽量将 vo 中的属性类型都更改为 short（避免copy时自动转换类型出现不想要的值），手动映射String到short
@@ -714,13 +848,13 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
     }
 
     @Override
-    public List<Object> importExcel(InputStream inputStream, String mapperId) {
+    public List<List<Object>> importExcel(InputStream inputStream, String mapperId) {
         if (LOGGER.isInfoEnabled()) {
             LOGGER.info("导入 Excel");
         }
         CommonUtil.assertArgumentNotEmpty(mapperId, "必须设置mapper文件中对应的id值：" + mapperId);
         CommonUtil.assertArgumentNotNull(inputStream, "未正确读取到流：" + inputStream);
-        List<Object> resultList = new ArrayList<>();
+        List<List<Object>> resultList = new ArrayList<>();
         ExcelOfImportVo importVo = (ExcelOfImportVo) baseConfigs.get(mapperId);
         CommonUtil.assertArgumentNotNull(importVo, "未从配置中获取到指定mapperId('" + mapperId + "')的配置对象");
         if (Boolean.TRUE.equals(importVo.getIsIndexWay())) {
@@ -737,20 +871,25 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         return resultList;
     }
 
-    private void doImportExcelWithTemplate(InputStream inputStream, ExcelOfImportVo importVo, List<Object> resultList) {
+    private void doImportExcelWithTemplate(InputStream inputStream, ExcelOfImportVo importVo, List<List<Object>> resultList) {
         try {
             Workbook workbook = WorkbookFactory.create(inputStream);
-            // TODO 暂时只有一个sheet
-            for (Sheet sheet : workbook) {
+
+            // 遍历 workbook 的每一个 sheet
+            for (int index = 0; index < workbook.getNumberOfSheets(); index++) {
+                Sheet sheet = workbook.getSheetAt(index);
+                SheetVo sheetVo = importVo.getSheetVos().get(index);
+                List<Object> sheetList = new ArrayList<>();
                 // try {
                 // 处理 startIndex
-                String startIndexForTemplate = importVo.getStartIndexForTemplate();
+                String startIndexForTemplate = sheetVo.getStartIndexForTemplate();
                 int rowIndex = CoreUtil.getRowIndexFormExcelLocation(startIndexForTemplate);
-                Class<? extends Object> clz = CommonUtil.getClassInstance(importVo.getType());
-                Map<String, ExcelEntry> excelEntryMap = importVo.getExcelEntryMap();
-                List<Integer> ignores = CommonUtil.getIgnoreColumnIndex(importVo.getIgnoreColumnIndex());
-                int rowFailCount = 0;
+                Class<? extends Object> clz = CommonUtil.getClassInstance(sheetVo.getType());
+                Map<String, ExcelEntry> excelEntryMap = sheetVo.getExcelEntryMap();
+                List<Integer> ignores = CommonUtil.getIgnoreColumnIndex(sheetVo.getIgnoreColumnIndex());
+
                 // 继续处理表中的数据
+                int rowFailCount = 0;
                 for (int rowIx = rowIndex; rowIx < sheet.getLastRowNum(); rowIx++) {
                     Row row = sheet.getRow(rowIx);
                     // 跳过 startIndex 之前的部分
@@ -761,7 +900,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                     try {
                         Object t = clz.newInstance();
                         readRow2ObjWithTemplate(importVo, excelEntryMap, ignores, row, columnIndex, t);
-                        resultList.add(t);
+                        sheetList.add(t);
                     } catch (InstantiationException | IllegalAccessException | OutOfColumnThresholdException e) {
                         e.printStackTrace();// newInstance 异常
                         rowFailCount = increaseRowAndThrowIfPossible(rowFailCount, importVo.getRowFailThreshold());
@@ -771,7 +910,17 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                 //     e.printStackTrace();
                 // TODO ，暂时不做处理 sheet 的 失败策略，其他方法都也还没有做
                 // }
+                if (!sheetList.isEmpty()) {
+                    resultList.add(sheetList);
+                }
             }
+
+            /*int sheetIndex = 0;
+            for (Sheet sheet : workbook) {
+                SheetVo sheetVo = importVo.getSheetVos().get(sheetIndex);
+
+                sheetIndex++;
+            }*/
         } catch (EncryptedDocumentException | InvalidFormatException | IOException e) {
             e.printStackTrace();
         }
@@ -809,33 +958,48 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         }
     }
 
-    private void doImportExcel(InputStream inputStream, ExcelOfImportVo importVo, List<Object> resultList) {
+    private void doImportExcel(InputStream inputStream, ExcelOfImportVo importVo, List<List<Object>> resultList) {
         try {
             Workbook workbook = WorkbookFactory.create(inputStream);
-            // TODO 暂时只有一个sheet
-            for (Sheet sheet : workbook) {
+
+            for (int index = 0; index < workbook.getNumberOfSheets(); index++) {
+                Sheet sheet = workbook.getSheetAt(index);
+                SheetVo sheetVo = importVo.getSheetVos().get(index);
+                List<Object> sheetList = new ArrayList<>();
+
                 int rowFailCount = 0;
                 Iterator<Row> rowIterator = sheet.rowIterator();
                 // （使用迭代器和elements能够自动去除）--startRowNo去除顶部多余的内容
-                ignoreLeftOrTop(importVo.getStartRowNo(), rowIterator);
+                ignoreLeftOrTop(sheetVo.getStartRowNo(), rowIterator);
                 // TODO 映射表头与entry(单行表头)
-                Class<? extends Object> clz = CommonUtil.getClassInstance(importVo.getType());
-                Map<Integer, ExcelEntry> headerEntries = mappingHeader2Entry(importVo, rowIterator);
+                Class<? extends Object> clz = CommonUtil.getClassInstance(sheetVo.getType());
+                Map<Integer, ExcelEntry> headerEntries = mappingHeader2Entry(sheetVo, rowIterator);
                 // 继续处理表中的数据（（使用迭代器和elements能够自动去除）--startCellNo去除左侧多余的内容）
                 while (rowIterator.hasNext()) {
                     Row row = rowIterator.next();
                     Iterator<Cell> cellIterator = row.cellIterator();
-                    ignoreLeftOrTop(importVo.getStartCellNo(), cellIterator);
+                    ignoreLeftOrTop(sheetVo.getStartCellNo(), cellIterator);
                     try {
                         Object t = clz.newInstance();
                         readRow2Obj(importVo, headerEntries, cellIterator, t);
-                        resultList.add(t);
+                        sheetList.add(t);
                     } catch (InstantiationException | IllegalAccessException | OutOfColumnThresholdException e) {
                         e.printStackTrace();// newInstance 异常
                         rowFailCount = increaseRowAndThrowIfPossible(rowFailCount, importVo.getRowFailThreshold());
                     }
                 }
+
+                if (!sheetList.isEmpty()) {
+                    resultList.add(sheetList);
+                }
             }
+
+            /*int sheetIndex = 0;
+            for (Sheet sheet : workbook) {
+                SheetVo sheetVo = importVo.getSheetVos().get(sheetIndex);
+
+                sheetIndex++;
+            }*/
         } catch (EncryptedDocumentException | InvalidFormatException | IOException e) {
             e.printStackTrace();
         }
@@ -915,7 +1079,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                     setValue2Property(t, pendingInfo.getValue(), pendingInfo.getEntry(), pendingMap, propertyValued, entryIterator);
                 } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException | InstantiationException e) {
                     e.printStackTrace();
-                    cellFailCount = increaseColumnAndThrowIfPossible(cellFailCount, pendingInfo.getEntry().getExcelVo().getColumnFailThreshold());
+                    cellFailCount = increaseColumnAndThrowIfPossible(cellFailCount, pendingInfo.getEntry().getSheetVo().getExcelVo().getColumnFailThreshold());
                 }
             }
         } while (lastSize != pendingMap.size());
@@ -1045,7 +1209,7 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
         boolean pendingFlag = false;// true表示放入了pendingMap中，需要在下一次遍历进行再次处理
         Map<String, Set<String>> dependencies = excelEntry.getDependencies();// 这是当前 excelEntry 的所有依赖属性
         String mappedPendingKey;// 将其作为 pendingMap 的 key
-        ExcelVo excelVo = excelEntry.getExcelVo();
+        ExcelVo excelVo = excelEntry.getSheetVo().getExcelVo();
         if (Boolean.TRUE.equals(excelVo.getIsIndexWay())) {
             mappedPendingKey = excelEntry.getColumnIndex();
         } else {
@@ -1128,17 +1292,17 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
     /**
      * 将配置中的header信息映射到entry中
      *
-     * @param importVo
+     * @param sheetVo
      * @param rowIterator
      * @return
      * @author huanghao
      * @date 2017年4月10日上午11:34:20
      */
-    private Map<Integer, ExcelEntry> mappingHeader2Entry(ExcelOfImportVo importVo, Iterator<Row> rowIterator) {
+    private Map<Integer, ExcelEntry> mappingHeader2Entry(SheetVo sheetVo, Iterator<Row> rowIterator) {
         Map<Integer, ExcelEntry> entries = new HashMap<>();
         if (rowIterator.hasNext()) {
             Row row = rowIterator.next();
-            Map<String, ExcelEntry> excelEntryMap = importVo.getExcelEntryMap();
+            Map<String, ExcelEntry> excelEntryMap = sheetVo.getExcelEntryMap();
             for (Iterator<Cell> cellIterator = row.cellIterator(); cellIterator.hasNext(); ) {
                 Cell cell = cellIterator.next();
                 // 根据表头从configuration中获取setter
@@ -1197,6 +1361,9 @@ public class DefaultExcelEngine extends AbstractExcelEngine implements ExcelEngi
                     // FIXME 暂时这么处理，cell 获取的值默认是 double，在设置到 int 类型的时候会报错，同理，byte，short，float 也会报错
                     if ("int".equals(dataFormatOrName) || "0".equals(dataFormatOrName)) {
                         value = (int) numericCellValue;
+                    } else if ("DateTime".equals(dataFormatOrName)) {
+                        value = DateUtil.getJavaDate(numericCellValue);
+                        // value = new Date((long) numericCellValue);
                     } else {
                         value = numericCellValue;
                     }

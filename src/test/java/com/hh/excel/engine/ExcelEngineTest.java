@@ -12,11 +12,12 @@ import org.junit.Test;
  * Created by 黄浩 on 2017/7/30 0030.
  */
 public class ExcelEngineTest {
+	ExcelEngine excelEngine;
 	@Before
 	public void setUp() throws Exception {
 		ExcelConfiguration excelConfiguration = new ExcelConfiguration();
 		EngineConfiguration engineConfiguration = new EngineConfiguration();
-		ExcelEngine excelEngine = new DefaultExcelEngine(engineConfiguration, excelConfiguration);
+		excelEngine = new DefaultExcelEngine(engineConfiguration, excelConfiguration);
 	}
 
 	@Test

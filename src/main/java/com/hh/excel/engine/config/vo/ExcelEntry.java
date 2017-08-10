@@ -22,11 +22,15 @@ public class ExcelEntry {
     /**
      * 当前列是否需要有值
      */
-    private Boolean required = Boolean.FALSE;
+    private Boolean required;
     /**
      * isImport : 是否是导入
      */
     private Boolean isImport;
+    /**
+     * 一个固定的列值；优先级最高，其次 setter，其次 setterELs；
+     */
+    private String value;
     /**
      * setter ：setter 方法名
      */
@@ -70,7 +74,7 @@ public class ExcelEntry {
     /**
      * isAutoWidth : 是否自动调整列宽
      */
-    private Boolean isAutoWidth = Boolean.TRUE;
+    private Boolean isAutoWidth;
     /**
      * dataSource : 查询 sql，要使用的数据源
      */
@@ -84,9 +88,14 @@ public class ExcelEntry {
      */
     private Map<String, Set<String>> dependencies;
     /**
-     * excel 的引用
+     * sheetVo 的引用
      */
-    private ExcelVo excelVo;
+    private SheetVo sheetVo;
+
+    public ExcelEntry() {
+        this.required = Boolean.FALSE;
+        this.isAutoWidth = Boolean.TRUE;
+    }
 
     public String getHeader() {
         return header;
@@ -118,6 +127,14 @@ public class ExcelEntry {
 
     public void setIsImport(String isImport) {
         this.isImport = Boolean.parseBoolean(isImport);
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
     }
 
     public String getSetter() {
@@ -237,11 +254,11 @@ public class ExcelEntry {
         this.dependencies = dependencies;
     }
 
-    public ExcelVo getExcelVo() {
-        return excelVo;
+    public SheetVo getSheetVo() {
+        return sheetVo;
     }
 
-    public void setExcelVo(ExcelVo excelVo) {
-        this.excelVo = excelVo;
+    public void setSheetVo(SheetVo sheetVo) {
+        this.sheetVo = sheetVo;
     }
 }

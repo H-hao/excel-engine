@@ -23,19 +23,21 @@ public class ConfigMapping {
     /**
      * 包含了 默认的 dataFormat 的 name-value 对
      */
-    public static final Map<String, String> DATA_FORMAT_MAP = Collections.unmodifiableMap(new HashMap<String, String>());
+    public static final Map<String, String> DATA_FORMAT_MAP;
 
     static {
 
         //region DATA_FORMAT_MAP 的初始化（添加元素对）
-        DATA_FORMAT_MAP.put(DATA_FORMAT_NAME_GENERAL, DATA_FORMAT_GENERAL);
-        DATA_FORMAT_MAP.put(DATA_FORMAT_NAME_INT, DATA_FORMAT_INT);
-        DATA_FORMAT_MAP.put(DATA_FORMAT_NAME_DOUBLE, DATA_FORMAT_DOUBLE);
-        DATA_FORMAT_MAP.put(DATA_FORMAT_NAME_DATE, DATA_FORMAT_DATE);
-        DATA_FORMAT_MAP.put(DATA_FORMAT_NAME_DATE_TIME, DATA_FORMAT_DATE_TIME);
-        DATA_FORMAT_MAP.put(DATA_FORMAT_NAME_ZH_DATE, DATA_FORMAT_ZH_DATE);
-        DATA_FORMAT_MAP.put(DATA_FORMAT_NAME_ZH_DATE_TIME, DATA_FORMAT_ZH_DATE_TIME);
-        DATA_FORMAT_MAP.put(DATA_FORMAT_NAME_STRING, DATA_FORMAT_STRING);
+        Map<String, String> changeableMap = new HashMap<>();
+        changeableMap.put(DATA_FORMAT_NAME_GENERAL, DATA_FORMAT_GENERAL);
+        changeableMap.put(DATA_FORMAT_NAME_INT, DATA_FORMAT_INT);
+        changeableMap.put(DATA_FORMAT_NAME_DOUBLE, DATA_FORMAT_DOUBLE);
+        changeableMap.put(DATA_FORMAT_NAME_DATE, DATA_FORMAT_DATE);
+        changeableMap.put(DATA_FORMAT_NAME_DATE_TIME, DATA_FORMAT_DATE_TIME);
+        changeableMap.put(DATA_FORMAT_NAME_ZH_DATE, DATA_FORMAT_ZH_DATE);
+        changeableMap.put(DATA_FORMAT_NAME_ZH_DATE_TIME, DATA_FORMAT_ZH_DATE_TIME);
+        changeableMap.put(DATA_FORMAT_NAME_STRING, DATA_FORMAT_STRING);
+        DATA_FORMAT_MAP = Collections.unmodifiableMap(changeableMap);
         //endregion
 
     }

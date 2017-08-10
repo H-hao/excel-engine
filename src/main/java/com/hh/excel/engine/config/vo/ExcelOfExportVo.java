@@ -3,13 +3,10 @@ package com.hh.excel.engine.config.vo;
 /**
  * 封装xml配置中excelExport的信息
  *
- * @param
  * @author huanghao
  * @date 2017年4月6日上午11:05:29
  */
 public class ExcelOfExportVo extends ExcelVo {
-    protected static final int MAX_COLUMN_WIDTH = 25 * 256;// 30 个字符宽度
-    protected static final short MAX_ROW_HEIGHT = 36 * 12;
 
     /**
      * fileName : 导出的文件名
@@ -21,38 +18,22 @@ public class ExcelOfExportVo extends ExcelVo {
     private String exportType;
     /**
      * title : 用于excel最上方展示的title
+     * TODO 是否需要？
      */
+    @Deprecated
     private String title;
     /**
-     * freezeHeader ： 导出时，冻结顶部多少行
+     * 全局引用样式
      */
-    private int freezeTop;
+    private String globalStyleRef;
     /**
-     * freezeLeft :冻结左部
+     * 全局引用表头样式
      */
-    private int freezeLeft;
-    /**
-     * styleRef:引用的样式id
-     */
-    private String styleRef;
-    /**
-     * headerStyleRef : 所有cell使用的样式
-     */
-    private String headerStyleRef;
-    /**
-     * 最大单元格宽度
-     */
-    private int maxColumnWidth;
-    /**
-     * 最大行高度
-     */
-    private short maxRowHeight;
+    private String globalHeaderStyleRef;
 
     public ExcelOfExportVo() {
         this.fileName = DEFAULT_EXCEL_NAME;
         this.exportType = XLSX;
-        this.maxColumnWidth = MAX_COLUMN_WIDTH;
-        this.maxRowHeight = MAX_ROW_HEIGHT;
     }
 
     public String getFileName() {
@@ -79,52 +60,20 @@ public class ExcelOfExportVo extends ExcelVo {
         this.title = title;
     }
 
-    public int getFreezeTop() {
-        return freezeTop;
+    public String getGlobalStyleRef() {
+        return globalStyleRef;
     }
 
-    public void setFreezeTop(String freezeTop) {
-        this.freezeTop = Integer.parseInt(freezeTop);
+    public void setGlobalStyleRef(String globalStyleRef) {
+        this.globalStyleRef = globalStyleRef;
     }
 
-    public int getFreezeLeft() {
-        return freezeLeft;
+    public String getGlobalHeaderStyleRef() {
+        return globalHeaderStyleRef;
     }
 
-    public void setFreezeLeft(String freezeLeft) {
-        this.freezeLeft = Integer.parseInt(freezeLeft);
-    }
-
-    public String getStyleRef() {
-        return styleRef;
-    }
-
-    public void setStyleRef(String styleRef) {
-        this.styleRef = styleRef;
-    }
-
-    public String getHeaderStyleRef() {
-        return headerStyleRef;
-    }
-
-    public void setHeaderStyleRef(String headerStyleRef) {
-        this.headerStyleRef = headerStyleRef;
-    }
-
-    public int getMaxColumnWidth() {
-        return maxColumnWidth;
-    }
-
-    public void setMaxColumnWidth(String maxColumnWidth) {
-        this.maxColumnWidth = Integer.parseInt(maxColumnWidth);
-    }
-
-    public short getMaxRowHeight() {
-        return maxRowHeight;
-    }
-
-    public void setMaxRowHeight(String maxRowHeight) {
-        this.maxRowHeight = Short.parseShort(maxRowHeight);
+    public void setGlobalHeaderStyleRef(String globalHeaderStyleRef) {
+        this.globalHeaderStyleRef = globalHeaderStyleRef;
     }
 
 }
